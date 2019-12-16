@@ -11,7 +11,22 @@ import Url
 import Url.Parser as Url
 
 
+port onPopState : (String -> msg) -> Sub msg
+
+
 port onUrlChange : (String -> msg) -> Sub msg
+
+
+port getLocation : () -> Cmd msg
+
+
+port getLocationP : () -> Cmd msg
+
+
+port gotLocation : (String -> msg) -> Sub msg
+
+
+port gotLocationP : (String -> msg) -> Sub msg
 
 
 port pushUrl : String -> Cmd msg
@@ -32,24 +47,84 @@ main =
 
 
 subscriptions _ =
-    onUrlChange UrlChanged
+    Sub.batch
+        [ onPopState PopState
+        , onUrlChange UrlChanged
+        , gotLocation GotLocation
+        , gotLocationP GotLocationP
+        ]
 
 
-type alias PreViewport =
-    Viewport
+type alias History =
+    { previous : Viewport
+    , beforePrevious : Viewport
+    }
 
 
 type Model
-    = Top PreViewport
-    | Polano PreViewport
-    | MilkyTrain PreViewport
-    | RainWind PreViewport
-    | NotFound PreViewport
+    = Top History
+    | Polano History
+    | MilkyTrain History
+    | RainWind History
+    | NotFound History
+
+
+toHistory : Model -> History
+toHistory model =
+    case model of
+        Top hs ->
+            hs
+
+        Polano hs ->
+            hs
+
+        MilkyTrain hs ->
+            hs
+
+        RainWind hs ->
+            hs
+
+        NotFound hs ->
+            hs
+
+
+updateHistory : History -> Model -> Model
+updateHistory hs model =
+    case model of
+        Top _ ->
+            Top hs
+
+        Polano _ ->
+            Polano hs
+
+        MilkyTrain _ ->
+            MilkyTrain hs
+
+        RainWind _ ->
+            RainWind hs
+
+        NotFound _ ->
+            NotFound hs
+
+
+defaultViewport : Viewport
+defaultViewport =
+    { scene =
+        { width = 0
+        , height = 0
+        }
+    , viewport =
+        { x = 0
+        , y = 0
+        , width = 0
+        , height = 0
+        }
+    }
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( locationHrefToModel flags
+    ( locationHrefToModel { previous = defaultViewport, beforePrevious = defaultViewport } flags
     , Cmd.batch
         [-- [ Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
         ]
@@ -57,74 +132,139 @@ init flags =
 
 
 type Msg
-    = UrlChanged String
+    = PopState String
+    | UrlChanged String
+    | GotLocation String
     | Clicked String
     | GotViewPort (Result Never Viewport)
+    | GotLocationP String
+    | GotViewPortP (Result Never Viewport)
+    | NoOp
 
 
 
 -- | GotViewPort (Result Never Viewport)
 
 
-locationHrefToModel : String -> Model
-locationHrefToModel here =
-    let
-        defaultViewport =
-            { scene =
-                { width = 0
-                , height = 0
-                }
-            , viewport =
-                { x = 0
-                , y = 0
-                , width = 0
-                , height = 0
-                }
-            }
-    in
+locationHrefToModel : History -> String -> Model
+locationHrefToModel hs here =
     if here == "http://localhost:1234/" then
-        Top defaultViewport
+        Top hs
 
     else if here == "http://localhost:1234/polano-square" then
-        Polano defaultViewport
+        Polano hs
 
     else if here == "http://localhost:1234/milky-train" then
-        MilkyTrain defaultViewport
+        MilkyTrain hs
 
     else if here == "http://localhost:1234/rain-wind" then
-        RainWind defaultViewport
+        RainWind hs
 
     else
-        NotFound defaultViewport
+        NotFound hs
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        hs =
+            toHistory model
+    in
     case msg of
+        PopState here ->
+            let
+                _ =
+                    Debug.log "PopState" here
+            in
+            ( model
+              -- ( locationHrefToModel here
+            , Cmd.batch
+                [ Task.perform GotViewPortP <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
+                ]
+            )
+
         UrlChanged here ->
-            ( locationHrefToModel here, Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport )
+            let
+                _ =
+                    Debug.log "urlchanged" here
+            in
+            ( model
+              -- ( locationHrefToModel here
+            , Cmd.batch
+                [ Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
+                ]
+            )
 
         Clicked url ->
-            ( model, pushUrl url )
+            let
+                _ =
+                    Debug.log "clicked" url
+            in
+            ( model
+            , Cmd.batch
+                [ pushUrl url
+
+                -- , Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
+                ]
+            )
 
         GotViewPort (Ok viewport) ->
-            case model of
-                NotFound _ ->
-                    ( NotFound viewport, Cmd.none )
+            let
+                nextHs =
+                    { previous = viewport, beforePrevious = hs.previous }
+            in
+            ( updateHistory nextHs model, getLocation () )
 
-                Top _ ->
-                    ( Top viewport, Cmd.none )
-
-                Polano _ ->
-                    ( Polano viewport, Cmd.none )
-
-                MilkyTrain _ ->
-                    ( MilkyTrain viewport, Cmd.none )
-
-                RainWind _ ->
-                    ( RainWind viewport, Cmd.none )
-
+        -- case model of
+        --     NotFound _ ->
+        --         ( NotFound viewport, Cmd.none )
+        --     Top _ ->
+        --         ( Top viewport, Cmd.none )
+        --     Polano _ ->
+        --         ( Polano viewport, Cmd.none )
+        --     MilkyTrain _ ->
+        --         ( MilkyTrain viewport, Cmd.none )
+        --     RainWind _ ->
+        --         ( RainWind viewport, Cmd.none )
         GotViewPort (Err _) ->
+            ( model, Cmd.none )
+
+        GotLocation url ->
+            ( locationHrefToModel hs url
+            , Cmd.none
+              -- このTaskのタイミングが違う
+              -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
+            )
+
+        GotViewPortP (Ok viewport) ->
+            let
+                nextHs =
+                    { previous = viewport, beforePrevious = hs.previous }
+            in
+            ( updateHistory nextHs model, getLocationP () )
+
+        -- case model of
+        --     NotFound _ ->
+        --         ( NotFound viewport, Cmd.none )
+        --     Top _ ->
+        --         ( Top viewport, Cmd.none )
+        --     Polano _ ->
+        --         ( Polano viewport, Cmd.none )
+        --     MilkyTrain _ ->
+        --         ( MilkyTrain viewport, Cmd.none )
+        --     RainWind _ ->
+        --         ( RainWind viewport, Cmd.none )
+        GotViewPortP (Err _) ->
+            ( model, Cmd.none )
+
+        GotLocationP url ->
+            ( locationHrefToModel hs url
+            , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport 0 1500)
+              -- このTaskのタイミングが違う
+              -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
+            )
+
+        NoOp ->
             ( model, Cmd.none )
 
 
@@ -173,7 +313,7 @@ view model =
             viewPage rainWindPage viewport
 
 
-viewPage : Page -> PreViewport -> Html Msg
+viewPage : Page -> History -> Html Msg
 viewPage page _ =
     let
         outer =
