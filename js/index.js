@@ -8,8 +8,7 @@ var app = Elm.Main.init({
 
 // Inform app of browser navigation (the BACK and FORWARD buttons)
 window.onpopstate = () => {
-  console.log('popstate');
-  debugger;
+  console.log(window.pageYOffset);
   app.ports.onPopState.send(location.href);
 };
 

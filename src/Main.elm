@@ -3,7 +3,7 @@ port module Main exposing (Msg(..), main, update, view)
 import Browser
 import Browser.Dom exposing (Viewport)
 import Html exposing (Html, a, button, div, h1, h3, input, span, text)
-import Html.Attributes exposing (class, href, style)
+import Html.Attributes exposing (class, href, id, style)
 import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Json.Decode as D
 import Task
@@ -136,9 +136,9 @@ type Msg
     | UrlChanged String
     | GotLocation String
     | Clicked String
-    | GotViewPort (Result Never Viewport)
+    | GotViewPort Viewport
     | GotLocationP String
-    | GotViewPortP (Result Never Viewport)
+    | GotViewPortP Viewport
     | NoOp
 
 
@@ -179,7 +179,7 @@ update msg model =
             ( model
               -- ( locationHrefToModel here
             , Cmd.batch
-                [ Task.perform GotViewPortP <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
+                [ Task.perform GotViewPortP Browser.Dom.getViewport
                 ]
             )
 
@@ -191,7 +191,7 @@ update msg model =
             ( model
               -- ( locationHrefToModel here
             , Cmd.batch
-                [ Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
+                [ Task.perform GotViewPort Browser.Dom.getViewport
                 ]
             )
 
@@ -208,8 +208,11 @@ update msg model =
                 ]
             )
 
-        GotViewPort (Ok viewport) ->
+        GotViewPort viewport ->
             let
+                _ =
+                    Debug.log "vp" viewport
+
                 nextHs =
                     { previous = viewport, beforePrevious = hs.previous }
             in
@@ -226,9 +229,6 @@ update msg model =
         --         ( MilkyTrain viewport, Cmd.none )
         --     RainWind _ ->
         --         ( RainWind viewport, Cmd.none )
-        GotViewPort (Err _) ->
-            ( model, Cmd.none )
-
         GotLocation url ->
             ( locationHrefToModel hs url
             , Cmd.none
@@ -236,8 +236,11 @@ update msg model =
               -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
             )
 
-        GotViewPortP (Ok viewport) ->
+        GotViewPortP viewport ->
             let
+                _ =
+                    Debug.log "vp" viewport
+
                 nextHs =
                     { previous = viewport, beforePrevious = hs.previous }
             in
@@ -254,9 +257,6 @@ update msg model =
         --         ( MilkyTrain viewport, Cmd.none )
         --     RainWind _ ->
         --         ( RainWind viewport, Cmd.none )
-        GotViewPortP (Err _) ->
-            ( model, Cmd.none )
-
         GotLocationP url ->
             ( locationHrefToModel hs url
             , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport 0 1500)
@@ -327,7 +327,8 @@ viewPage page _ =
         , h3 [] [ text "宮沢賢治" ]
         , div [] [ text outer ]
         , div
-            [ style "width" "200px"
+            [ id "inner"
+            , style "width" "200px"
             , style "height" "200px"
             , style "overflow-y" "scroll"
             ]
