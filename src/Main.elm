@@ -6,7 +6,6 @@ import Html exposing (Html, a, div, h1, h3, text)
 import Html.Attributes exposing (class, href, id, style)
 import Html.Events exposing (preventDefaultOn)
 import Json.Decode as D
-import Task
 
 
 port onPopState : (() -> msg) -> Sub msg
@@ -22,6 +21,9 @@ port gotLocation : (String -> msg) -> Sub msg
 
 
 port pushUrl : String -> Cmd msg
+
+
+port setOffsets : () -> Cmd msg
 
 
 type alias Flags =
@@ -101,7 +103,8 @@ update msg model =
             ( model
               -- ( locationHrefToModel here
             , Cmd.batch
-                [--                [ Task.perform GotViewPortP Browser.Dom.getViewport
+                [ --                [ Task.perform GotViewPortP Browser.Dom.getViewport
+                  getLocation ()
                 ]
             )
 
@@ -109,7 +112,7 @@ update msg model =
             ( model
               -- ( locationHrefToModel here
             , Cmd.batch
-                [ Task.perform GotViewPort Browser.Dom.getViewport
+                [ getLocation ()
                 ]
             )
 
@@ -127,7 +130,7 @@ update msg model =
 
         GotLocation url ->
             ( locationHrefToModel url
-            , Cmd.none
+            , setOffsets ()
               -- このTaskのタイミングが違う
               -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
             )
@@ -144,9 +147,9 @@ topPage =
     div
         [ class "background top" ]
         [ h1 [] [ text "宮沢賢治" ]
-        , link (Clicked "/polano-square") [ href "" ] [ text "ポラーノの広場" ]
-        , link (Clicked "/milky-train") [ href "" ] [ text "銀河鉄道の夜" ]
-        , link (Clicked "/rain-wind") [ href "" ] [ text "雨ニモマケズ風ニモマケズ" ]
+        , link (Clicked "http://localhost:1234/polano-square") [ href "" ] [ text "ポラーノの広場" ]
+        , link (Clicked "http://localhost:1234/milky-train") [ href "" ] [ text "銀河鉄道の夜" ]
+        , link (Clicked "http://localhost:1234/rain-wind") [ href "" ] [ text "雨ニモマケズ風ニモマケズ" ]
         ]
 
 
