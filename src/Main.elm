@@ -2,31 +2,23 @@ port module Main exposing (Msg(..), main, update, view)
 
 import Browser
 import Browser.Dom exposing (Viewport)
-import Html exposing (Html, a, button, div, h1, h3, input, span, text)
+import Html exposing (Html, a, div, h1, h3, text)
 import Html.Attributes exposing (class, href, id, style)
-import Html.Events exposing (onClick, onInput, preventDefaultOn)
+import Html.Events exposing (preventDefaultOn)
 import Json.Decode as D
 import Task
-import Url
-import Url.Parser as Url
 
 
-port onPopState : (String -> msg) -> Sub msg
+port onPopState : (() -> msg) -> Sub msg
 
 
-port onUrlChange : (String -> msg) -> Sub msg
+port onUrlChange : (() -> msg) -> Sub msg
 
 
 port getLocation : () -> Cmd msg
 
 
-port getLocationP : () -> Cmd msg
-
-
 port gotLocation : (String -> msg) -> Sub msg
-
-
-port gotLocationP : (String -> msg) -> Sub msg
 
 
 port pushUrl : String -> Cmd msg
@@ -51,7 +43,6 @@ subscriptions _ =
         [ onPopState PopState
         , onUrlChange UrlChanged
         , gotLocation GotLocation
-        , gotLocationP GotLocationP
         ]
 
 
@@ -132,13 +123,11 @@ init flags =
 
 
 type Msg
-    = PopState String
-    | UrlChanged String
+    = PopState ()
+    | UrlChanged ()
     | GotLocation String
     | Clicked String
     | GotViewPort Viewport
-    | GotLocationP String
-    | GotViewPortP Viewport
     | NoOp
 
 
@@ -172,22 +161,14 @@ update msg model =
     in
     case msg of
         PopState here ->
-            let
-                _ =
-                    Debug.log "PopState" here
-            in
             ( model
               -- ( locationHrefToModel here
             , Cmd.batch
-                [ Task.perform GotViewPortP Browser.Dom.getViewport
+                [--                [ Task.perform GotViewPortP Browser.Dom.getViewport
                 ]
             )
 
         UrlChanged here ->
-            let
-                _ =
-                    Debug.log "urlchanged" here
-            in
             ( model
               -- ( locationHrefToModel here
             , Cmd.batch
@@ -196,10 +177,6 @@ update msg model =
             )
 
         Clicked url ->
-            let
-                _ =
-                    Debug.log "clicked" url
-            in
             ( model
             , Cmd.batch
                 [ pushUrl url
@@ -210,56 +187,14 @@ update msg model =
 
         GotViewPort viewport ->
             let
-                _ =
-                    Debug.log "vp" viewport
-
                 nextHs =
                     { previous = viewport, beforePrevious = hs.previous }
             in
             ( updateHistory nextHs model, getLocation () )
 
-        -- case model of
-        --     NotFound _ ->
-        --         ( NotFound viewport, Cmd.none )
-        --     Top _ ->
-        --         ( Top viewport, Cmd.none )
-        --     Polano _ ->
-        --         ( Polano viewport, Cmd.none )
-        --     MilkyTrain _ ->
-        --         ( MilkyTrain viewport, Cmd.none )
-        --     RainWind _ ->
-        --         ( RainWind viewport, Cmd.none )
         GotLocation url ->
             ( locationHrefToModel hs url
             , Cmd.none
-              -- このTaskのタイミングが違う
-              -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
-            )
-
-        GotViewPortP viewport ->
-            let
-                _ =
-                    Debug.log "vp" viewport
-
-                nextHs =
-                    { previous = viewport, beforePrevious = hs.previous }
-            in
-            ( updateHistory nextHs model, getLocationP () )
-
-        -- case model of
-        --     NotFound _ ->
-        --         ( NotFound viewport, Cmd.none )
-        --     Top _ ->
-        --         ( Top viewport, Cmd.none )
-        --     Polano _ ->
-        --         ( Polano viewport, Cmd.none )
-        --     MilkyTrain _ ->
-        --         ( MilkyTrain viewport, Cmd.none )
-        --     RainWind _ ->
-        --         ( RainWind viewport, Cmd.none )
-        GotLocationP url ->
-            ( locationHrefToModel hs url
-            , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport 0 1500)
               -- このTaskのタイミングが違う
               -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
             )
@@ -318,21 +253,11 @@ viewPage page _ =
     let
         outer =
             page.phrase |> String.repeat 100
-
-        inner =
-            page.phrase |> String.repeat 100
     in
     div [ class "background" ]
         [ h1 [] [ text page.title ]
         , h3 [] [ text "宮沢賢治" ]
         , div [] [ text outer ]
-        , div
-            [ id "inner"
-            , style "width" "200px"
-            , style "height" "200px"
-            , style "overflow-y" "scroll"
-            ]
-            [ text inner ]
         ]
 
 

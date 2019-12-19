@@ -1,5 +1,6 @@
 .git
 .cache
+.idea
 
 node_modules
 dist
