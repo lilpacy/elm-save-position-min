@@ -46,76 +46,17 @@ subscriptions _ =
         ]
 
 
-type alias History =
-    { previous : Viewport
-    , beforePrevious : Viewport
-    }
-
-
 type Model
-    = Top History
-    | Polano History
-    | MilkyTrain History
-    | RainWind History
-    | NotFound History
-
-
-toHistory : Model -> History
-toHistory model =
-    case model of
-        Top hs ->
-            hs
-
-        Polano hs ->
-            hs
-
-        MilkyTrain hs ->
-            hs
-
-        RainWind hs ->
-            hs
-
-        NotFound hs ->
-            hs
-
-
-updateHistory : History -> Model -> Model
-updateHistory hs model =
-    case model of
-        Top _ ->
-            Top hs
-
-        Polano _ ->
-            Polano hs
-
-        MilkyTrain _ ->
-            MilkyTrain hs
-
-        RainWind _ ->
-            RainWind hs
-
-        NotFound _ ->
-            NotFound hs
-
-
-defaultViewport : Viewport
-defaultViewport =
-    { scene =
-        { width = 0
-        , height = 0
-        }
-    , viewport =
-        { x = 0
-        , y = 0
-        , width = 0
-        , height = 0
-        }
-    }
+    = Top
+    | Polano
+    | MilkyTrain
+    | RainWind
+    | NotFound
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( locationHrefToModel { previous = defaultViewport, beforePrevious = defaultViewport } flags
+    ( locationHrefToModel flags
     , Cmd.batch
         [-- [ Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
         ]
@@ -135,30 +76,26 @@ type Msg
 -- | GotViewPort (Result Never Viewport)
 
 
-locationHrefToModel : History -> String -> Model
-locationHrefToModel hs here =
+locationHrefToModel : String -> Model
+locationHrefToModel here =
     if here == "http://localhost:1234/" then
-        Top hs
+        Top
 
     else if here == "http://localhost:1234/polano-square" then
-        Polano hs
+        Polano
 
     else if here == "http://localhost:1234/milky-train" then
-        MilkyTrain hs
+        MilkyTrain
 
     else if here == "http://localhost:1234/rain-wind" then
-        RainWind hs
+        RainWind
 
     else
-        NotFound hs
+        NotFound
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        hs =
-            toHistory model
-    in
     case msg of
         PopState here ->
             ( model
@@ -186,14 +123,10 @@ update msg model =
             )
 
         GotViewPort viewport ->
-            let
-                nextHs =
-                    { previous = viewport, beforePrevious = hs.previous }
-            in
-            ( updateHistory nextHs model, getLocation () )
+            ( model, getLocation () )
 
         GotLocation url ->
-            ( locationHrefToModel hs url
+            ( locationHrefToModel url
             , Cmd.none
               -- このTaskのタイミングが違う
               -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
@@ -232,24 +165,24 @@ rainWindPage =
 view : Model -> Html Msg
 view model =
     case model of
-        NotFound _ ->
+        NotFound ->
             div [] [ text "404 not found" ]
 
-        Top _ ->
+        Top ->
             topPage
 
-        Polano viewport ->
-            viewPage polanoSquarePage viewport
+        Polano ->
+            viewPage polanoSquarePage
 
-        MilkyTrain viewport ->
-            viewPage milkyTrainPage viewport
+        MilkyTrain ->
+            viewPage milkyTrainPage
 
-        RainWind viewport ->
-            viewPage rainWindPage viewport
+        RainWind ->
+            viewPage rainWindPage
 
 
-viewPage : Page -> History -> Html Msg
-viewPage page _ =
+viewPage : Page -> Html Msg
+viewPage page =
     let
         outer =
             page.phrase |> String.repeat 100
