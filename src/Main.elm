@@ -1,14 +1,10 @@
 port module Main exposing (Msg(..), main, update, view)
 
 import Browser
-import Browser.Dom exposing (Viewport)
 import Html exposing (Html, a, div, h1, h3, text)
-import Html.Attributes exposing (class, href, id, style)
+import Html.Attributes exposing (class, href)
 import Html.Events exposing (preventDefaultOn)
 import Json.Decode as D
-
-
-port onPopState : (() -> msg) -> Sub msg
 
 
 port onUrlChange : (() -> msg) -> Sub msg
@@ -42,8 +38,7 @@ main =
 
 subscriptions _ =
     Sub.batch
-        [ onPopState PopState
-        , onUrlChange UrlChanged
+        [ onUrlChange UrlChanged
         , gotLocation GotLocation
         ]
 
@@ -59,18 +54,14 @@ type Model
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( locationHrefToModel flags
-    , Cmd.batch
-        [-- [ Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
-        ]
+    , Cmd.none
     )
 
 
 type Msg
-    = PopState ()
-    | UrlChanged ()
+    = UrlChanged ()
     | GotLocation String
     | Clicked String
-    | GotViewPort Viewport
     | NoOp
 
 
@@ -99,18 +90,8 @@ locationHrefToModel here =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PopState here ->
+        UrlChanged _ ->
             ( model
-              -- ( locationHrefToModel here
-            , Cmd.batch
-                [ --                [ Task.perform GotViewPortP Browser.Dom.getViewport
-                  getLocation ()
-                ]
-            )
-
-        UrlChanged here ->
-            ( model
-              -- ( locationHrefToModel here
             , Cmd.batch
                 [ getLocation ()
                 ]
@@ -118,21 +99,14 @@ update msg model =
 
         Clicked url ->
             ( model
-            , Cmd.batch
-                [ pushUrl url
-
-                -- , Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
-                ]
+            , pushUrl url
+              -- Task.perform GotViewPort <| Task.map (\t -> Ok t) <| Browser.Dom.getViewport
             )
-
-        GotViewPort viewport ->
-            ( model, getLocation () )
 
         GotLocation url ->
             ( locationHrefToModel url
             , setOffsets ()
-              -- このTaskのタイミングが違う
-              -- , Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
+              -- Task.perform (\_ -> NoOp) (Browser.Dom.setViewport vp.viewport.x vp.viewport.y)
             )
 
         NoOp ->
